@@ -17,8 +17,8 @@ class MPU6050:
         self.address = address
         
         self.bus.write_byte_data(self.address, 0x6B, 0x00)  # Wake up
-        self.bus.write_byte_data(self.address, 0x1B, 0x08)  # Gyro ±500°/s
-        self.bus.write_byte_data(self.address, 0x1C, 0x08)  # Accel ±4g
+        self.bus.write_byte_data(self.address, 0x1B, 0x08)  # Gyro
+        self.bus.write_byte_data(self.address, 0x1C, 0x08)  # Accel 
         
         self.accel_bias = np.zeros(3)
         self.gyro_bias = np.zeros(3)
