@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+smbus2
+torch
+fastapi
+pyyaml
+PyWavelets
+pytest
+pytest-cov
+pyserial

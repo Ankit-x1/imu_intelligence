@@ -1,0 +1,11 @@
+imu:
+  bus: 1
+  address: 0x68
+  sampling_rate: 100
+
+calibration:
+  stationary_threshold: 0.05  # m/s² variance
+  gravity_magnitude: 9.80665
+
+anomaly:
+  detection_threshold: 0.85   # Anomaly score > 0.85 triggers alert

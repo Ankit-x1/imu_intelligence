@@ -60,7 +60,7 @@ class HermesIMU:
         print("Learning normal motion patterns...")
         self._collect_training_data()
         
-        print("Hermes active - monitoring motion...")
+        print("Agent active - monitoring motion...")
         
         window_size = 100  
         accel_window = []

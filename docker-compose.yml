@@ -1,0 +1,18 @@
+services:
+  hermes-core:
+    build: .
+    container_name: imu-core
+    devices:
+      - "/dev/i2c-1:/dev/i2c-1"
+    privileged: true
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+
+  hermes-dashboard:
+    build: .
+    container_name: imu-dashboard
+    command: python dashboard/web_ui.py
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
