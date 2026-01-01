@@ -43,12 +43,12 @@ class HardwareAnalyzer:
         
         # Analysis
         if current_config['gyro_config'] == 0x08:
-            print("✅ Gyro range (±500°/s) good for most applications")
+            print(" Gyro range (±500°/s) good for most applications")
         else:
             self.setup_issues.append("Gyro range may need adjustment")
             
         if current_config['accel_config'] == 0x08:
-            print("✅ Accel range (±4g) good for most applications")
+            print(" Accel range (±4g) good for most applications")
         else:
             self.setup_issues.append("Accel range may need adjustment")
             
@@ -75,14 +75,14 @@ class HardwareAnalyzer:
         print("\nMotion Frequency Coverage:")
         for motion, freq_range in human_motion_freqs.items():
             if freq_range[1] <= nyquist_freq:
-                print(f"✅ {motion}: {freq_range[0]}-{freq_range[1]} Hz - CAPTURED")
+                print(f" {motion}: {freq_range[0]}-{freq_range[1]} Hz - CAPTURED")
             else:
-                print(f"⚠️  {motion}: {freq_range[0]}-{freq_range[1]} Hz - PARTIALLY CAPTURED")
+                print(f"  {motion}: {freq_range[0]}-{freq_range[1]} Hz - PARTIALLY CAPTURED")
                 self.setup_issues.append(f"High-frequency {motion} may be undersampled")
         
         # Recommendation
         if sampling_rate >= 100:
-            print("✅ 100Hz sampling adequate for most applications")
+            print(" 100Hz sampling adequate for most applications")
             self.recommendations.append("Consider 200Hz for high-vibration monitoring")
         else:
             self.setup_issues.append("Sampling rate too low for accurate motion capture")
@@ -110,16 +110,16 @@ class HardwareAnalyzer:
         print(f"Available Bandwidth: {i2c_config['speed']/8} bytes/sec")
         
         if required_bandwidth < i2c_config['speed']/8:
-            print("✅ I2C bandwidth sufficient")
+            print(" I2C bandwidth sufficient")
         else:
             self.setup_issues.append("I2C bandwidth may be limiting")
             self.recommendations.append("Consider increasing I2C speed to 400kHz")
         
         # I2C reliability
         print("\nI2C Reliability Factors:")
-        print("✅ 4-wire connection (VCC, GND, SDA, SCL)")
-        print("⚠️  Consider pull-up resistors for long cables")
-        print("⚠️  Shielded cables recommended for noisy environments")
+        print(" 4-wire connection (VCC, GND, SDA, SCL)")
+        print("  Consider pull-up resistors for long cables")
+        print("  Shielded cables recommended for noisy environments")
         
         self.recommendations.append("Use 4.7kΩ pull-up resistors for cables > 10cm")
         self.recommendations.append("Add 0.1µF capacitor near IMU for power stability")
@@ -143,9 +143,9 @@ class HardwareAnalyzer:
         print(f"Recommended Voltage: {power_specs['recommended_voltage']}")
         
         print("\nPower Quality Requirements:")
-        print("✅ 3.3V stable supply required")
-        print("⚠️  Avoid 5V - can damage IMU")
-        print("⚠️  Power ripple < 50mV recommended")
+        print(" 3.3V stable supply required")
+        print("  Avoid 5V - can damage IMU")
+        print("  Power ripple < 50mV recommended")
         
         # Raspberry Pi power analysis
         pi_power_capacity = {
@@ -158,7 +158,7 @@ class HardwareAnalyzer:
         print(f"IMU Consumption: {power_specs['current_consumption']['normal']}")
         
         if float(power_specs['current_consumption']['normal'].replace('mA', '')) < 16:
-            print("✅ IMU power draw within Pi limits")
+            print(" IMU power draw within Pi limits")
         else:
             self.setup_issues.append("IMU may exceed Pi GPIO power limits")
             self.recommendations.append("Use external 3.3V regulator for better stability")
@@ -178,9 +178,9 @@ class HardwareAnalyzer:
         print(f"Vibration Resistance: {environmental_specs['vibration_resistance']}")
         
         print("\nEnvironmental Recommendations:")
-        print("✅ Suitable for industrial environments")
-        print("⚠️  Consider temperature compensation for extreme conditions")
-        print("⚠️  Mount securely to prevent mechanical stress")
+        print(" Suitable for industrial environments")
+        print("  Consider temperature compensation for extreme conditions")
+        print("  Mount securely to prevent mechanical stress")
         
         self.recommendations.append("Use mechanical mounting with vibration damping")
         self.recommendations.append("Consider enclosure for dust/moisture protection")
@@ -202,9 +202,9 @@ class HardwareAnalyzer:
         
         # Filtering analysis
         print("\nFiltering Recommendations:")
-        print("✅ Kalman filter implemented for noise reduction")
-        print("✅ Auto-calibration compensates for bias")
-        print("⚠️  Consider additional low-pass filter for high vibration")
+        print(" Kalman filter implemented for noise reduction")
+        print(" Auto-calibration compensates for bias")
+        print("  Consider additional low-pass filter for high vibration")
         
         self.recommendations.append("Add 20Hz low-pass filter for vibration-heavy applications")
         self.recommendations.append("Implement temperature monitoring for extreme environments")
@@ -229,11 +229,11 @@ class HardwareAnalyzer:
         print("="*60)
         
         if not self.setup_issues:
-            print("✅ HARDWARE SETUP IS PRODUCTION READY")
-            print("✅ All critical requirements met")
+            print(" HARDWARE SETUP IS PRODUCTION READY")
+            print("All critical requirements met")
         else:
-            print("⚠️  HARDWARE SETUP NEEDS IMPROVEMENTS")
-            print("⚠️  Address the following issues:")
+            print(" HARDWARE SETUP NEEDS IMPROVEMENTS")
+            print(" Address the following issues:")
             for issue in self.setup_issues:
                 print(f"   - {issue}")
         
@@ -251,9 +251,9 @@ def main():
     is_ready = analyzer.generate_report()
     
     if is_ready:
-        print("\n🎉 Your hardware setup is ready for professional deployment!")
+        print("\n Your hardware setup is ready for professional deployment!")
     else:
-        print("\n⚠️  Review and implement recommendations for best results")
+        print("\n Review and implement recommendations for best results")
 
 if __name__ == "__main__":
     main()
