@@ -111,25 +111,43 @@ class HermesIMU:
     def _collect_training_data(self):
         """Collect normal operation data for training"""
         print("Move device in normal operating patterns for 30 seconds...")
+        print("Show the device its typical motions and usage patterns")
         
-        training_data = []
+        accel_windows = []
+        gyro_windows = []
+        
         start_time = time.time()
+        window_size = 100
+        current_accel = []
+        current_gyro = []
         
         while time.time() - start_time < 30:
             data = self.imu.read_raw()
             
-            # Simple window for signature            
-            training_data.append(data.accel)
+            current_accel.append(data.accel)
+            current_gyro.append(data.gyro)
             
-            if len(training_data) >= 100:
-                window = np.array(training_data[-100:])
-                signature = self.signature_extractor.extract(window, window*0.1)  # Mock gyro
-                training_data = []  
+            if len(current_accel) >= window_size:
+                # Store complete window with real accel and gyro data
+                accel_windows.append(np.array(current_accel))
+                gyro_windows.append(np.array(current_gyro))
                 
-                # Store signature
-                if len(self.signature_history) < 100:  
-                    self.signature_history.append(signature)
-                else:
+                # Extract signature from real IMU data
+                signature = self.signature_extractor.extract(
+                    np.array(current_accel), 
+                    np.array(current_gyro)
+                )
+                
+                self.signature_history.append(signature)
+                
+                # Reset for next window
+                current_accel = []
+                current_gyro = []
+                
+                print(f"Collected {len(self.signature_history)} training samples...")
+                
+                if len(self.signature_history) >= 100:
+                    print("Training data collection complete!")
                     break
             
             time.sleep(0.01)
@@ -138,7 +156,9 @@ class HermesIMU:
             X_train = np.array(self.signature_history)
             self.anomaly_detector.build_model()
             self.anomaly_detector.train(X_train)
-            print(f"Anomaly detector trained on {len(X_train)} samples")
+            print(f"Anomaly detector trained on {len(X_train)} real motion samples")
+        else:
+            print("Warning: Insufficient training data collected")
     
     def _log_anomaly(self, signature, anomaly_result):
         """Log anomaly with full context"""
