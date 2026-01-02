@@ -93,9 +93,13 @@ def visualize_raw_data():
     axes[1].grid(True)
     
     plt.tight_layout()
-    plt.savefig('imu_raw_data.png')
-    print(" Saved plot to 'imu_raw_data.png'")
-    plt.show()
+    try:
+        plt.savefig('imu_raw_data.png')
+        print(" Saved plot to 'imu_raw_data.png'")
+        plt.show()
+    except:
+        plt.savefig('imu_raw_data.png')
+        print(" Saved plot to 'imu_raw_data.png' (display not available)")
     
     return True
 

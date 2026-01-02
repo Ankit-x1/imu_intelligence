@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import json
+import os
 from datetime import datetime
 from core.imu_driver import MPU6050
 from core.kalman_filter import AdaptiveEKF
@@ -13,6 +14,8 @@ class HermesIMU:
     Main orchestrator
     """
     def __init__(self):
+        mode = os.getenv('MODE', 'inference')
+        
         self.imu = MPU6050()
         self.ekf = AdaptiveEKF()
         self.calibrator = SelfCalibrator()
@@ -29,6 +32,22 @@ class HermesIMU:
             'anomalies_detected': 0,
             'avg_processing_time': 0
         }
+        
+        # Load ONNX model for inference mode
+        if mode == 'inference':
+            self._load_pretrained_model()
+    
+    def _load_pretrained_model(self):
+        """Load pretrained ONNX model for inference"""
+        model_path = "models/anomaly_detector.onnx"
+        if os.path.exists(model_path):
+            if self.anomaly_detector.load_onnx(model_path):
+                print(" ONNX model loaded for edge inference")
+            else:
+                print("  ONNX load failed, using PyTorch")
+        else:
+            print("  No pretrained model found, using PyTorch")
+            print("Run training first: python training_protocol.py")
         
     def run(self):
         """Main loop - runs at 100Hz"""
@@ -172,8 +191,11 @@ class HermesIMU:
             'system_state': self.stats.copy()
         }
         
-        with open('anomalies.jsonl', 'a') as f:
-            f.write(json.dumps(anomaly_log) + '\n')
+        try:
+            with open('anomalies.jsonl', 'a') as f:
+                f.write(json.dumps(anomaly_log) + '\n')
+        except Exception as e:
+            print(f"Failed to log anomaly: {e}")
         
         self.stats['anomalies_detected'] += 1
         print(f" ANOMALY DETECTED! Score: {anomaly_result['anomaly_score']:.3f}")
