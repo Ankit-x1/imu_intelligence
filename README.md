@@ -11,15 +11,11 @@ IMU intelligence is a **physics-based** system that analyzes real IMU sensor dat
 - **Statistical Moments**: Kurtosis and skewness of motion distributions
 - **Vibration Characteristics**: Band-specific frequency analysis
 
-## Smart Docker-Based Workflow
+## Raspberry Pi Training & Deployment
 
-### **Laptop (Training) → Raspberry Pi (Inference)**
-
-## Step 1: Laptop Training Setup
-
-### uv (Recommended - Fastest)**
+### **Setup Raspberry Pi**
 ```bash
-# Install uv (one-time setup)
+# Install uv (faster than pip)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
 
@@ -27,21 +23,38 @@ source ~/.bashrc
 git clone https://github.com/Ankit-x1/imu_intelligence
 cd imu_intelligence
 
-# Create virtual environment and install
+# Create virtual environment
 uv venv
 source .venv/bin/activate
+
+# Install dependencies
 uv pip install -r requirements.txt
+
+# Enable I2C
+sudo raspi-config
+# Interface Options → I2C → Enable
+sudo reboot
 ```
 
-## Step 2: Training on Laptop
+### **Hardware Setup**
+```
+MPU6050 -> Raspberry Pi
+VCC    -> 3.3V
+GND    -> GND  
+SDA    -> GPIO 2 (SDA)
+SCL    -> GPIO 3 (SCL)
+```
 
-### **Hardware Connection Required**
+## Step 1: Training on Raspberry Pi
+
+### **Hardware Validation**
 ```bash
-# Connect MPU6050 to laptop via USB-I2C adapter
-# Or use Raspberry Pi for training, then deploy model
-
-# Test hardware connection
+# Test IMU connection
 python test_integration.py
+
+# Expected output (device stationary):
+# Gravity measurement: ~9.81 m/s² (Error: <10%)
+# Standard deviation: <0.5 m/s²
 ```
 
 ### **Professional Training**
@@ -63,37 +76,7 @@ python training_protocol.py
 - `training_data_*.json` - Physics-based training data
 - Motion analysis plots
 
-## Step 3: Raspberry Pi Deployment
-
-### **Setup Raspberry Pi**
-```bash
-# On Raspberry Pi
-git clone https://github.com/Ankit-x1/imu_intelligence
-cd imu_intelligence
-
-# Install uv (faster than pip)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.bashrc
-
-# Setup environment
-uv venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
-
-# Enable I2C
-sudo raspi-config
-# Interface Options → I2C → Enable
-sudo reboot
-```
-
-### **Hardware Setup**
-```
-MPU6050 -> Raspberry Pi
-VCC    -> 3.3V
-GND    -> GND  
-SDA    -> GPIO 2 (SDA)
-SCL    -> GPIO 3 (SCL)
-```
+## Step 2: Deployment on Raspberry Pi
 
 ### **Deploy with Docker (Recommended)**
 ```bash
@@ -110,29 +93,30 @@ docker-compose --profile dashboard up -d
 
 ### **Or Direct Deployment**
 ```bash
-# Copy trained model from laptop
-scp models/anomaly_detector_*.onnx pi@raspberry-pi:~/imu_intelligence/models/
-
-# Run inference
+# Run inference directly
 source .venv/bin/activate
 python main.py
 ```
 
-## File Integration Analysis
+**Deployment Process:**
+1. **Model Loading** - Automatically loads ONNX if available
+2. **Real-time Processing** - Physics-based feature extraction at 100Hz
+3. **Anomaly Detection** - Identifies physical motion violations
+4. **Continuous Monitoring** - 24/7 operation with logging
 
-### **System Architecture**
+### **Dashboard Monitoring**
+```bash
+# Start dashboard
+docker-compose --profile dashboard up -d
+# Access at http://localhost:5000
 ```
-📁 Core Components
-├── core/imu_driver.py      # MPU6050 hardware interface
-├── core/kalman_filter.py   # Physics-based state estimation
-├── core/calibration.py     # Self-calibration using gravity
-├── ml/signature.py         # Physics-based feature extraction
-├── ml/autoencoder.py       # Anomaly detection + ONNX export
-├── main.py                 # Inference orchestrator
-├── training_protocol.py    # Professional training workflow
-├── test_integration.py     # Hardware validation
-└── dashboard/web_ui.py      # Real-time monitoring
-```
+
+**Dashboard Features:**
+- Real-time physics data
+- Anomaly timeline
+- System performance
+- Motion visualization
+
 
 ### **Integration Flow**
 1. **IMU Driver** → Raw sensor data
@@ -142,72 +126,20 @@ python main.py
 5. **Autoencoder** → Anomaly detection + ONNX export
 6. **Dashboard** → Real-time monitoring
 
-## Smart Training Options
+## Quick Start Summary
 
-### **Option 1: Laptop Training (Recommended)**
-- **Hardware**: Connect MPU6050 via USB-I2C adapter
-- **Advantage**: Powerful laptop for training
-- **Process**: Train → Export ONNX → Deploy to Pi
-
-### **Option 2: Raspberry Pi Training**
-- **Hardware**: Connect directly to Pi GPIO
-- **Advantage**: No adapter needed
-- **Process**: Train on Pi → Keep model locally
-
-### **Option 3: Simulation Training**
-- **Hardware**: No IMU needed (synthetic data)
-- **Advantage**: Test workflow without hardware
-- **Process**: Use synthetic physics data → Test deployment
-
-## Testing & Validation
-
-### **Hardware Testing**
 ```bash
-# Test IMU connection
-python test_integration.py
+# === RASPBERRY PI SETUP ===
+uv venv && source .venv/bin/activate
+uv pip install -r requirements.txt
 
-# Expected output (stationary):
-# Gravity measurement: ~9.81 m/s² (Error: <10%)
-# Standard deviation: <0.5 m/s²
-```
+# === TRAINING ===
+python training_protocol.py
 
-### **Physics Validation**
-```bash
-# Test physics-based features
-python tests/validation.py
-
-# Test with real hardware
-python training_protocol.py --validate-only
-```
-
-### **Docker Testing**
-```bash
-# Test without hardware
-docker-compose --profile train run pytest
-
-# Test with hardware
-docker-compose --profile inference run python test_integration.py
-```
-
-## Production Deployment
-
-### **Monitoring Dashboard**
-```bash
-# Start dashboard
+# === DEPLOYMENT ===
+docker-compose --profile inference up -d
 docker-compose --profile dashboard up -d
-
-# Features:
-- Real-time physics data
-- Anomaly timeline
-- System performance
-- Motion visualization
 ```
-
-### **Edge Benefits**
-- **Real-time Processing**: 100Hz physics calculations
-- **Offline Operation**: No cloud dependency
-- **Privacy**: Local data processing
-- **Reliability**: Self-calibrating, adaptive
 
 ## Troubleshooting
 
@@ -235,15 +167,10 @@ docker-compose logs -f
 docker-compose build --no-cache
 ```
 
-## Quick Summary
+## Key Advantages
 
-**Smart Workflow:**
-1. **Laptop**: `uv venv` → `python training_protocol.py` → ONNX export
-2. **Raspberry Pi**: `uv venv` → `docker-compose --profile inference up -d`
-3. **Monitor**: `docker-compose --profile dashboard up -d`
-
-**Key Advantages:**
 - **Physics-based**: Explainable, robust features
 - **Edge-optimized**: Real-time, offline operation
 - **Docker-smart**: Clean deployment profiles
 - **uv-fast**: Quick dependency management
+- **All-in-one**: Train and deploy on same device
