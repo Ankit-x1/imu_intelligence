@@ -5,8 +5,8 @@ import pywt
 
 class MotionSignature:
     """
-    Universal motion fingerprint that
-    combines time, frequency, and wavelet features
+    Physics-based motion fingerprint that extracts
+    meaningful features from IMU sensor data
     """
     def __init__(self, fs=100):
         self.fs = fs
@@ -14,23 +14,31 @@ class MotionSignature:
         
     def extract(self, accel_window, gyro_window):
         """
-        Extract 32-dimensional motion signature
+        Extract 32-dimensional physics-based motion signature
+        Features based on physical properties of motion
         """
         features = []
         
-        features.extend(self._time_features(accel_window, 'accel'))
-        features.extend(self._time_features(gyro_window, 'gyro'))
+        # Time-domain physics features
+        features.extend(self._physics_time_features(accel_window, 'accel'))
+        features.extend(self._physics_time_features(gyro_window, 'gyro'))
         
-        features.extend(self._frequency_features(accel_window, 'accel'))
+        # Frequency-domain analysis (vibration characteristics)
+        features.extend(self._physics_frequency_features(accel_window, 'accel'))
         
-        features.extend(self._statistical_features(accel_window))
+        # Statistical properties (motion consistency)
+        features.extend(self._physics_statistical_features(accel_window))
         
-        features.extend(self._wavelet_features(accel_window[:, 0]))  # X-axis
+        # Energy and power features (physical work)
+        features.extend(self._physics_energy_features(accel_window, gyro_window))
+        
+        # Orientation and gravity features
+        features.extend(self._physics_orientation_features(accel_window))
         
         return np.array(features)
     
-    def _time_features(self, data, sensor_type):
-        """Extract time-domain features"""
+    def _physics_time_features(self, data, sensor_type):
+        """Extract time-domain physics features"""
         features = []
         
         features.append(np.sqrt(np.mean(data**2)))
@@ -93,6 +101,58 @@ class MotionSignature:
         
         return features
     
+    def _physics_energy_features(self, accel_window, gyro_window):
+        """Energy and power features (physical work)"""
+        features = []
+        
+        # Kinetic energy (1/2 * m * v^2)
+        accel_magnitude = np.linalg.norm(accel_window, axis=1)
+        gyro_magnitude = np.linalg.norm(gyro_window, axis=1)
+        
+        # Average energy over window
+        features.append(np.mean(accel_magnitude**2))
+        features.append(np.mean(gyro_magnitude**2))
+        
+        # Power spectral density (energy distribution)
+        accel_fft = np.fft.rfft(accel_window, axis=0)
+        gyro_fft = np.fft.rfft(gyro_window, axis=0)
+        
+        features.append(np.mean(np.abs(accel_fft)**2))
+        features.append(np.mean(np.abs(gyro_fft)**2))
+        
+        # Mechanical work (force * displacement)
+        if len(accel_window) > 1:
+            accel_displacement = np.cumsum(accel_window, axis=0)
+            work = np.sum(accel_window[:-1] * np.diff(accel_displacement, axis=0), axis=0)
+            features.append(np.mean(work))
+        
+        return features
+    
+    def _physics_orientation_features(self, accel_window):
+        """Orientation and gravity features"""
+        features = []
+        
+        # Gravity vector estimation (when stationary)
+        gravity_estimate = np.mean(accel_window, axis=0)
+        features.extend(gravity_estimate)
+        
+        # Deviation from expected gravity (9.81 m/s²)
+        gravity_magnitude = np.linalg.norm(gravity_estimate)
+        features.append(abs(gravity_magnitude - 9.81))
+        
+        # Tilt angle from gravity components
+        if gravity_magnitude > 0:
+            tilt_x = np.arcsin(gravity_estimate[0] / gravity_magnitude)
+            tilt_y = np.arcsin(gravity_estimate[1] / gravity_magnitude)
+            features.extend([tilt_x, tilt_y])
+        
+        # Orientation change rate (stability)
+        if len(accel_window) > 10:
+            orientation_variance = np.var(accel_window[-10:], axis=0)
+            features.append(orientation_variance)
+        
+        return features
+    
     def _wavelet_features(self, signal):
         """Wavelet transform features"""
         coeffs = pywt.wavedec(signal, 'db4', level=3)
@@ -101,4 +161,4 @@ class MotionSignature:
         for i, coeff in enumerate(coeffs):
             features.append(np.sum(coeff**2) / len(coeff))
             
-        return features[:4]  
+        return features[:4]
