@@ -145,7 +145,7 @@ class IMUTrainer:
             return False
     
     def save_training_data(self, normal_signatures, anomaly_signatures=None):
-        """Save training data for future use"""
+        """Save training data and export ONNX model"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         training_data = {
@@ -159,11 +159,17 @@ class IMUTrainer:
         }
         
         filename = f"training_data_{timestamp}.json"
-        with open(filename, 'w') as f:
-            json.dump(training_data, f, indent=2)
-        
-        print(f"✅ Training data saved to {filename}")
-        return filename
+        try:
+            with open(filename, 'w') as f:
+                json.dump(training_data, f, indent=2)
+            print(f"✅ Training data saved to {filename}")
+            
+            # Export to ONNX for edge deployment
+            self.anomaly_detector.export_onnx(f"models/anomaly_detector_{timestamp}.onnx")
+            return filename
+        except Exception as e:
+            print(f"Failed to save training data: {e}")
+            return None
     
     def visualize_data(self, accel_windows, gyro_windows, title="IMU Data"):
         """Visualize collected IMU data"""
@@ -199,9 +205,17 @@ class IMUTrainer:
         
         plt.tight_layout()
         filename = f"{title.lower().replace(' ', '_')}.png"
-        plt.savefig(filename, dpi=150, bbox_inches='tight')
-        print(f"📊 Visualization saved to {filename}")
-        plt.show()
+        try:
+            plt.savefig(filename, dpi=150, bbox_inches='tight')
+            print(f"📊 Visualization saved to {filename}")
+        except Exception as e:
+            print(f"Failed to save visualization: {e}")
+        
+        # Only show plot if display is available
+        try:
+            plt.show()
+        except:
+            print("Display not available, plot saved to file only")
 
 def main():
     """Professional training workflow"""
