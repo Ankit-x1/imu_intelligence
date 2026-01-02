@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 import json
+import os
 import uvicorn
 
 app = FastAPI()
@@ -23,21 +24,30 @@ async def get_status():
 @app.get("/api/history")
 async def get_history():
     try:
+        if not os.path.exists("signatures.json"):
+            return JSONResponse([])
         with open("signatures.json", "r") as f:
             history = json.load(f)
         return JSONResponse(history[-100:])  # Last 100 samples
-    except Exception:
+    except Exception as e:
+        print(f"History API error: {e}")
         return JSONResponse([])
 
 @app.get("/api/anomalies")
 async def get_anomalies():
     anomalies = []
     try:
+        if not os.path.exists("anomalies.jsonl"):
+            return JSONResponse([])
         with open("anomalies.jsonl", "r") as f:
             for line in f:
-                anomalies.append(json.loads(line))
+                try:
+                    anomalies.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
         return JSONResponse(anomalies[-20:])  # Last 20 anomalies
-    except Exception:
+    except Exception as e:
+        print(f"Anomalies API error: {e}")
         return JSONResponse([])
 
 @app.get("/api/calibration")
