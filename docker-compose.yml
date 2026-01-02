@@ -1,18 +1,45 @@
 services:
-  hermes-core:
+  # Training container (for development)
+  hermes-train:
     build: .
-    container_name: imu-core
+    container_name: imu-train
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - MODE=train
+    command: python training_protocol.py
+    profiles:
+      - train
+
+  # Inference container (for edge deployment)
+  hermes-inference:
+    build: .
+    container_name: imu-inference
     devices:
       - "/dev/i2c-1:/dev/i2c-1"
     privileged: true
     restart: unless-stopped
     volumes:
       - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - MODE=inference
+      - I2C_BUS=1
+    command: python main.py
+    profiles:
+      - inference
 
+  # Dashboard container
   hermes-dashboard:
     build: .
     container_name: imu-dashboard
-    command: python dashboard/web_ui.py
     ports:
       - "5000:5000"
-    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MODE=dashboard
+    command: python dashboard/web_ui.py
+    profiles:
+      - dashboard
