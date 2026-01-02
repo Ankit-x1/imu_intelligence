@@ -12,14 +12,20 @@ class IMUData:
     temp: float        
     
 class MPU6050:
+    """
+    Physics-based IMU driver for MPU6050 sensor
+    Provides calibrated accelerometer and gyroscope data
+    """
     def __init__(self, bus=1, address=0x68):
         self.bus = smbus2.SMBus(bus)
         self.address = address
         
+        # Wake up MPU6050 and configure ranges
         self.bus.write_byte_data(self.address, 0x6B, 0x00)  # Wake up
-        self.bus.write_byte_data(self.address, 0x1B, 0x08)  # Gyro
-        self.bus.write_byte_data(self.address, 0x1C, 0x08)  # Accel 
+        self.bus.write_byte_data(self.address, 0x1B, 0x08)  # Gyro: ±500°/s
+        self.bus.write_byte_data(self.address, 0x1C, 0x08)  # Accel: ±4g
         
+        # Calibration parameters
         self.accel_bias = np.zeros(3)
         self.gyro_bias = np.zeros(3)
         self.accel_scale = np.ones(3)

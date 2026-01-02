@@ -4,7 +4,8 @@ from scipy.optimize import minimize
 
 class SelfCalibrator:
     """
-    Zero-config calibration that learns while in operation
+    Physics-based calibration that learns sensor biases
+    and scale factors using real IMU measurements
     """
     def __init__(self, window_size=1000):
         self.window = deque(maxlen=window_size)
@@ -63,13 +64,25 @@ class SelfCalibrator:
             return np.mean((norms - self.calibration_data['gravity_magnitude'])**2)
         
         initial_guess = np.concatenate([np.zeros(3), np.ones(3)])
-        result = minimize(cost_function, initial_guess, method='Nelder-Mead')
         
-        if result.success:
-            self.calibration_data['accel_bias'] = result.x[:3]
-            self.calibration_data['accel_scale'] = result.x[3:6]
-            self.is_calibrated = True
-            print("Auto-calibration complete!")
+        try:
+            result = minimize(cost_function, initial_guess, method='Nelder-Mead', 
+                           options={'maxiter': 1000, 'xatol': 1e-8})
+            
+            if result.success and np.all(np.isfinite(result.x)):
+                self.calibration_data['accel_bias'] = result.x[:3]
+                self.calibration_data['accel_scale'] = result.x[3:6]
+                self.is_calibrated = True
+                print("Auto-calibration complete!")
+            else:
+                print("Warning: Calibration optimization failed, using defaults")
+                self.calibration_data['accel_bias'] = np.zeros(3)
+                self.calibration_data['accel_scale'] = np.ones(3)
+                
+        except Exception as e:
+            print(f"Calibration error: {e}, using defaults")
+            self.calibration_data['accel_bias'] = np.zeros(3)
+            self.calibration_data['accel_scale'] = np.ones(3)
             
     def get_calibration(self):
         return self.calibration_data
