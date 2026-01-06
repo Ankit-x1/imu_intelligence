@@ -19,21 +19,25 @@ class MotionSignature:
         """
         features = []
         
-        # Time-domain physics features
+        # Time-domain physics features (5 + 5 = 10)
         features.extend(self._physics_time_features(accel_window, 'accel'))
         features.extend(self._physics_time_features(gyro_window, 'gyro'))
         
-        # Frequency-domain analysis (vibration characteristics)
-        features.extend(self._physics_frequency_features(accel_window, 'accel'))
+        # Frequency-domain analysis - only accel (7 features)
+        features.extend(self._frequency_features_single_axis(accel_window))
         
-        # Statistical properties (motion consistency)
-        features.extend(self._physics_statistical_features(accel_window))
+        # Statistical properties - only accel magnitude (2 features)
+        accel_mag = np.linalg.norm(accel_window, axis=1)
+        features.extend(self._compute_statistical_features(accel_mag))
         
-        # Energy and power features (physical work)
+        # Energy and power features (5 features)
         features.extend(self._physics_energy_features(accel_window, gyro_window))
         
-        # Orientation and gravity features
-        features.extend(self._physics_orientation_features(accel_window))
+        # Orientation and gravity features (8 features)
+        features.extend(self._physics_orientation_features_compact(accel_window))
+        
+        # Ensure exactly 32 features
+        features = features[:32]
         
         return np.array(features)
     
@@ -56,11 +60,25 @@ class MotionSignature:
         
         return features
     
-    def _frequency_features(self, data, sensor_type):
-        """Extract frequency-domain features"""
-        freqs, psd = welch(data, fs=self.fs, nperseg=min(256, len(data)))
+    def _frequency_features_single_axis(self, data):
+        """Extract frequency-domain features from magnitude only"""
+        # Use magnitude of acceleration for frequency analysis
+        accel_mag = np.linalg.norm(data, axis=1)
+        return self._compute_frequency_features(accel_mag)
+    
+    def _compute_frequency_features(self, data):
+        """Compute frequency features for single axis"""
+        # Ensure minimum data length
+        if len(data) < 10:
+            return [0.0] * 7  # Return zeros for insufficient data
+        
+        freqs, psd = welch(data, fs=self.fs, nperseg=min(256, len(data)//2))
         
         features = []
+        
+        # Handle empty PSD
+        if len(psd) == 0 or np.sum(psd) == 0:
+            return [0.0] * 7
         
         dominant_freq = freqs[np.argmax(psd)]
         features.append(dominant_freq)
@@ -83,6 +101,22 @@ class MotionSignature:
     
     def _statistical_features(self, data):
         """Statistical moments"""
+        features = []
+        
+        # Handle multi-dimensional data
+        if len(data.shape) > 1:
+            # Process each axis separately
+            for axis in range(data.shape[1]):
+                axis_data = data[:, axis]
+                axis_features = self._compute_statistical_features(axis_data)
+                features.extend(axis_features)
+            return features
+        else:
+            # Single axis data
+            return self._compute_statistical_features(data)
+    
+    def _compute_statistical_features(self, data):
+        """Compute statistical features for single axis"""
         features = []
         
         mean = np.mean(data)
@@ -128,28 +162,32 @@ class MotionSignature:
         
         return features
     
-    def _physics_orientation_features(self, accel_window):
-        """Orientation and gravity features"""
+    def _physics_orientation_features_compact(self, accel_window):
+        """Compact orientation features (8 total)"""
         features = []
         
-        # Gravity vector estimation (when stationary)
+        # Gravity vector estimation (3 features)
         gravity_estimate = np.mean(accel_window, axis=0)
         features.extend(gravity_estimate)
         
-        # Deviation from expected gravity (9.81 m/s²)
+        # Deviation from expected gravity (1 feature)
         gravity_magnitude = np.linalg.norm(gravity_estimate)
         features.append(abs(gravity_magnitude - 9.81))
         
-        # Tilt angle from gravity components
+        # Tilt angles (2 features)
         if gravity_magnitude > 0:
-            tilt_x = np.arcsin(gravity_estimate[0] / gravity_magnitude)
-            tilt_y = np.arcsin(gravity_estimate[1] / gravity_magnitude)
+            tilt_x = np.arcsin(np.clip(gravity_estimate[0] / gravity_magnitude, -1, 1))
+            tilt_y = np.arcsin(np.clip(gravity_estimate[1] / gravity_magnitude, -1, 1))
             features.extend([tilt_x, tilt_y])
+        else:
+            features.extend([0.0, 0.0])
         
-        # Orientation change rate (stability)
+        # Overall stability (2 features)
         if len(accel_window) > 10:
             orientation_variance = np.var(accel_window[-10:], axis=0)
-            features.append(orientation_variance)
+            features.extend([np.mean(orientation_variance), np.max(orientation_variance)])
+        else:
+            features.extend([0.0, 0.0])
         
         return features
     
